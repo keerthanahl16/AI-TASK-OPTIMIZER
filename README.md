@@ -121,4 +121,4 @@ OpenCV: For webcam capture and image processing.
 Pandas: For data management.
 Inspired by workplace well-being research and computer vision applications.
 
-Created by [Keerthana H L] in April 2025.
+Created by Keerthana H L in April 2025.
