@@ -7,6 +7,7 @@ This project was developed as part of a personal exploration into computer visio
 Table of Contents
 
 Features
+
 1.Real-Time Emotion Detection:
 Captures webcam images to detect emotions (happy, sad, angry, neutral, surprise, fear, disgust, crying) using DeepFace.
 Handles blank images and failed detections with retries and fallback to "neutral" mood.
@@ -59,7 +60,7 @@ Installation
 
 1.Clone the Repository:
 
-git clone https://github.com/your-username/ai-powered-task-optimizer.git
+git clone https://github.com/keerthanahl16/ai-powered-task-optimizer.git
 cd ai-powered-task-optimizer
 
 2.Set Up a Virtual Environment (recommended):
