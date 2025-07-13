@@ -1,0 +1,5 @@
+venv/
+*.pyc
+__pycache__/
+mood_history.csv
+temp_photo_*.jpg
