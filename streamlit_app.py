@@ -256,6 +256,9 @@ def main_streamlit_app():
     st.markdown(f"**Current Emotion:** <span style='font-size:24px; color:blue;'>{st.session_state.current_emotion.upper()}</span>", unsafe_allow_html=True)
     st.markdown(f"**Recommended Task:** <span style='font-size:20px; color:green;'>{st.session_state.current_task}</span>", unsafe_allow_html=True)
     
+    # NEW DIAGNOSTIC LINE: Directly write the session state value
+    st.write(f"**Task State (Direct Check):** {st.session_state.current_task}")
+
     if st.session_state.stress_alert:
         st.warning(st.session_state.stress_alert)
 
