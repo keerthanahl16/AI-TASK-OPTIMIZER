@@ -15,10 +15,17 @@ import av # Required by streamlit-webrtc for frame handling
 if 'current_emotion' not in st.session_state:
     st.session_state.current_emotion = "Waiting for webcam..."
 if 'current_task' not in st.session_state:
-    # Changed initial text to make it very distinct
     st.session_state.current_task = "--- NO TASK YET ---"
 if 'stress_alert' not in st.session_state:
     st.session_state.stress_alert = ""
+# NEW DIAGNOSTIC STATE VARIABLES
+if 'frame_count' not in st.session_state:
+    st.session_state.frame_count = 0
+if 'analysis_attempted' not in st.session_state:
+    st.session_state.analysis_attempted = "No analysis yet."
+if 'deepface_status' not in st.session_state:
+    st.session_state.deepface_status = "Awaiting DeepFace results."
+
 
 # --- Cached DeepFace Loader ---
 @st.cache_resource
@@ -168,13 +175,18 @@ class VideoProcessor(VideoTransformerBase):
         self.team_id = team_id
         self.last_analysis_time = time.time()
         self.analysis_interval = 3 # Analyze emotion every 3 seconds to reduce load
+        self.frame_counter = 0 # Initialize frame counter
 
     def recv(self, frame: av.VideoFrame) -> av.VideoFrame:
         img = frame.to_ndarray(format="bgr24")
 
+        self.frame_counter += 1
+        st.session_state.frame_count = self.frame_counter # Update frame count in session state
+
         current_time = time.time()
         if current_time - self.last_analysis_time > self.analysis_interval:
             self.last_analysis_time = current_time
+            st.session_state.analysis_attempted = f"Attempting analysis at frame {self.frame_counter}..."
 
             try:
                 results = DeepFace_lib.analyze(
@@ -194,19 +206,22 @@ class VideoProcessor(VideoTransformerBase):
                     self.tracker.track_mood(self.employee_id, self.team_id, emotion)
                     stress_message = self.tracker.check_stress_level(self.employee_id)
                     st.session_state.stress_alert = stress_message
+                    st.session_state.deepface_status = f"Face detected. Emotion: {emotion.upper()} (Frame {self.frame_counter})"
                 else:
                     print("--- DEBUG: In recv() - No face detected or no dominant emotion. Defaulting to neutral. ---") # Debug print
                     st.session_state.current_emotion = "neutral"
                     st.session_state.current_task = recommend_task("neutral")
                     self.tracker.track_mood(self.employee_id, self.team_id, "neutral")
                     st.session_state.stress_alert = ""
+                    st.session_state.deepface_status = f"No face detected or dominant emotion found. Using neutral. (Frame {self.frame_counter})"
                 
             except Exception as e:
                 print(f"--- ERROR: DeepFace analysis failed in recv(): {e} ---") # Debug print
                 st.session_state.current_emotion = "Error/Neutral"
-                st.session_state.current_task = recommend_task("neutral")
+                st.session_state.current_task = recommend_task("neutral") # Still try to give a neutral task on error
                 self.tracker.track_mood(self.employee_id, self.team_id, "neutral")
                 st.session_state.stress_alert = ""
+                st.session_state.deepface_status = f"DeepFace Error: {e} (Frame {self.frame_counter})"
 
         if 'current_emotion' in st.session_state and st.session_state.current_emotion:
             text = f"Emotion: {st.session_state.current_emotion.upper()}"
@@ -256,8 +271,12 @@ def main_streamlit_app():
     st.markdown(f"**Current Emotion:** <span style='font-size:24px; color:blue;'>{st.session_state.current_emotion.upper()}</span>", unsafe_allow_html=True)
     st.markdown(f"**Recommended Task:** <span style='font-size:20px; color:green;'>{st.session_state.current_task}</span>", unsafe_allow_html=True)
     
-    # NEW DIAGNOSTIC LINE: Directly write the session state value
+    # NEW DIAGNOSTIC LINES: Directly write the session state values for debugging
     st.write(f"**Task State (Direct Check):** {st.session_state.current_task}")
+    st.write(f"**Frames Processed:** {st.session_state.frame_count}")
+    st.write(f"**Analysis Attempt Status:** {st.session_state.analysis_attempted}")
+    st.write(f"**DeepFace Result Status:** {st.session_state.deepface_status}")
+
 
     if st.session_state.stress_alert:
         st.warning(st.session_state.stress_alert)
