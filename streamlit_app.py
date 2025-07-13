@@ -2,7 +2,7 @@ import streamlit as st
 from streamlit_webrtc import webrtc_streamer, VideoTransformerBase, WebRtcMode
 import cv2
 import numpy as np
-from deepface import DeepFace
+# from deepface import DeepFace # THIS LINE IS COMMENTED OUT/REMOVED
 from datetime import datetime
 import hashlib
 import time
@@ -11,6 +11,22 @@ import random
 import os
 import json
 import av # Required by streamlit-webrtc for frame handling
+
+# --- Cached DeepFace Loader ---
+@st.cache_resource
+def load_deepface_library():
+    """
+    Loads the DeepFace library and ensures its models are initialized.
+    This function will be run only once across all app sessions.
+    """
+    from deepface import DeepFace
+    # Optional: You can explicitly build a model here if you know which one
+    # will be used most frequently, to ensure it's downloaded during the
+    # cached execution. E.g., DeepFace.build_model("VGG-Face")
+    return DeepFace
+
+# Call the cached function to get the DeepFace library
+DeepFace_lib = load_deepface_library() # Now use DeepFace_lib.analyze, etc.
 
 # --- Your existing helper functions (slightly modified or unchanged) ---
 
@@ -59,8 +75,6 @@ def recommend_task(emotion):
             "Address what caused the feeling.",
             "Switch to a value-aligned task."
         ],
-        # "crying" is not a direct DeepFace emotion, but good to keep if you have another way to detect it.
-        # DeepFace typically maps "crying" to "sad" or "fear".
         "crying": [ # Added this to handle potential "crying" if it ever appears or if you manually set it
             "Rest and practice self-care.",
             "Reach out for support.",
@@ -150,6 +164,11 @@ class VideoProcessor(VideoTransformerBase):
         self.last_analysis_time = time.time()
         self.analysis_interval = 3 # Analyze emotion every 3 seconds to reduce load
 
+        # Initialize session state variables if they don't exist
+        # These need to be initialized outside of the transform/recv method
+        # if they are going to be used globally or updated by the UI.
+        # However, they are used for displaying, so this is fine.
+        # Streamlit handles session_state initialization when the script reruns.
         if 'current_emotion' not in st.session_state:
             st.session_state.current_emotion = "Waiting..."
         if 'current_task' not in st.session_state:
@@ -165,7 +184,8 @@ class VideoProcessor(VideoTransformerBase):
             self.last_analysis_time = current_time
 
             try:
-                results = DeepFace.analyze(
+                # Use the cached DeepFace_lib here
+                results = DeepFace_lib.analyze(
                     img_path=img,
                     actions=['emotion'],
                     enforce_detection=False,
@@ -181,17 +201,21 @@ class VideoProcessor(VideoTransformerBase):
                     stress_message = self.tracker.check_stress_level(self.employee_id)
                     st.session_state.stress_alert = stress_message
                 else:
+                    # If no face detected or no dominant emotion, default to neutral
                     st.session_state.current_emotion = "neutral"
                     st.session_state.current_task = recommend_task("neutral")
                     self.tracker.track_mood(self.employee_id, self.team_id, "neutral")
                     st.session_state.stress_alert = ""
                 
             except Exception as e:
+                # Log the error for debugging purposes (optional, could be st.error)
+                print(f"Error during DeepFace analysis: {e}")
                 st.session_state.current_emotion = "Error/Neutral"
                 st.session_state.current_task = recommend_task("neutral")
                 self.tracker.track_mood(self.employee_id, self.team_id, "neutral")
                 st.session_state.stress_alert = ""
 
+        # Draw current emotion on the frame
         if 'current_emotion' in st.session_state and st.session_state.current_emotion:
             text = f"Emotion: {st.session_state.current_emotion.upper()}"
             (text_width, text_height), baseline = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 0.9, 2)
@@ -223,12 +247,12 @@ def main_streamlit_app():
     anon_employee_id = anonymize_employee_id(employee_id_input)
 
     # Initialize MoodTracker (CSV will be in the same directory as the app.py)
-    # The MoodTracker constructor now uses os.path.dirname(__file__) to correctly locate the CSV.
     tracker = MoodTracker("mood_history.csv") 
 
     st.subheader("📸 Live Emotion Detection & Task Recommendation")
     st.info("Click 'START' to activate your webcam. Ensure your face is visible for accurate detection.")
 
+    # IMPORTANT: Ensure the VideoProcessor factory passes the tracker and IDs
     webrtc_ctx = webrtc_streamer(
         key="webcam-emotion-detector",
         mode=WebRtcMode.SENDRECV,
@@ -237,11 +261,19 @@ def main_streamlit_app():
         media_stream_constraints={"video": True, "audio": False}
     )
 
-    st.markdown(f"**Current Emotion:** <span style='font-size:24px; color:blue;'>{st.session_state.current_emotion.upper()}</span>", unsafe_allow_html=True)
-    st.markdown(f"**Recommended Task:** <span style='font-size:20px; color:green;'>{st.session_state.current_task}</span>", unsafe_allow_html=True)
-    
-    if st.session_state.stress_alert:
-        st.warning(st.session_state.stress_alert)
+    # Display emotion and task in the main Streamlit UI
+    # Only display these if the webrtc context is active and has a transformer
+    if webrtc_ctx.state.playing:
+        st.markdown(f"**Current Emotion:** <span style='font-size:24px; color:blue;'>{st.session_state.current_emotion.upper()}</span>", unsafe_allow_html=True)
+        st.markdown(f"**Recommended Task:** <span style='font-size:20px; color:green;'>{st.session_state.current_task}</span>", unsafe_allow_html=True)
+        
+        if st.session_state.stress_alert:
+            st.warning(st.session_state.stress_alert)
+    else:
+        # Show initial messages while waiting for webcam
+        st.markdown(f"**Current Emotion:** <span style='font-size:24px; color:blue;'>{st.session_state.current_emotion.upper()}</span>", unsafe_allow_html=True)
+        st.markdown(f"**Recommended Task:** <span style='font-size:20px; color:green;'>{st.session_state.current_task}</span>", unsafe_allow_html=True)
+
 
     st.subheader("📊 Mood History & Team Analytics")
 
