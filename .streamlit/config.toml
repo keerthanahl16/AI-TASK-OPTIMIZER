@@ -1,0 +1,2 @@
+[server]
+healthCheckEndpointTimeout = 600 # 10 minutes in seconds
