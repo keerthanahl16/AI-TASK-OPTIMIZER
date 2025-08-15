@@ -40,6 +40,12 @@ Retries up to 3 times for blank images or no-face detections.
 
 Demo
 
+You can try the live app here:
+
+AI Task Optimizer – Streamlit
+
+(Link opens your app hosted on Streamlit Cloud.)
+
 Example terminal output:
 ![Screenshot (15)](https://github.com/user-attachments/assets/22ea9312-da32-4acf-beac-6dbb9385dbc1)
 
