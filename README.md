@@ -49,6 +49,9 @@ Example terminal output:
 ![Screenshot (12)](https://github.com/user-attachments/assets/30a27c58-81d8-4887-92e8-3b23103f64da)
 
 ![Screenshot (13)](https://github.com/user-attachments/assets/b429ea95-fed0-411e-8f2b-d74fa3319e13)
+<img width="1366" height="768" alt="Screenshot (52)" src="https://github.com/user-attachments/assets/db947d66-7229-471f-94b4-4ff7f95205f7" />
+<img width="1366" height="768" alt="Screenshot (50)" src="https://github.com/user-attachments/assets/ab4fbdd1-9838-451f-9e6c-9d5aeef9d853" />
+<img width="1366" height="768" alt="Screenshot (51)" src="https://github.com/user-attachments/assets/9fabacb4-7568-48a2-8ec0-cd66592111ad" />
 
 Prerequisites
 
